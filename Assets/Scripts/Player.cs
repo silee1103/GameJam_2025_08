@@ -30,9 +30,10 @@ public class Player : MonoBehaviour, IListener
         if (_gameManager.State != Game_State.READY_PHASE) return;
         Vector2 input = value.Get<Vector2>();
         if (input == Vector2.zero) return;
-        if (MapManager.Instance.TryGetMapInPos((Vector2)transform.position + input, out var info)) //만약 앞에 물이면 못감
+        if (MapManager.Instance.TryGetMapInPos((Vector2)transform.position + input, out var info) && info.MapType == MAP_TYPE.WATER && info.water.isWalkable == false) //만약 앞에 물이면 못감
         {
-            //TODO...
+            Debug.LogError("물에는 못 들어감!");
+            return;
         }
         GameManager.Instance.ChangeState(Game_State.WALKING_PHASE);
         EventManager.Instance.PostNotification(EVENT_TYPE.EUserMove, this, input);
@@ -72,6 +73,8 @@ public class Player : MonoBehaviour, IListener
             case EVENT_TYPE.EUserMove:
                 break;
             case EVENT_TYPE.EUserSkip:
+                break;
+            case EVENT_TYPE.EAnimDone:
                 break;
         }
     }

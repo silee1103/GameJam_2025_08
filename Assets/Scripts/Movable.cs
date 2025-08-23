@@ -5,12 +5,12 @@ public abstract class Movable : MonoBehaviour
 { 
     public bool isInWater = false;
     
-    protected virtual void MovingTo(Vector2 dir)
+    protected virtual void MovingTo(Vector2 dir, Transform target = null)
     {
-        StartCoroutine(MoveCoroutine(dir, 1f));
+        StartCoroutine(MoveCoroutine(dir, 1f, target));
     }
 
-    protected virtual IEnumerator MoveCoroutine(Vector2 dir, float duration)
+    protected virtual IEnumerator MoveCoroutine(Vector2 dir, float duration, Transform target = null)
     {
         yield return new WaitForSecondsRealtime(0.2f);
         duration -= 0.2f;
@@ -20,6 +20,7 @@ public abstract class Movable : MonoBehaviour
         {
             time += Time.deltaTime / duration;
             transform.position += (Vector3)dir * Time.deltaTime / duration;
+            if (target != null) target.transform.position = transform.position;
             yield return null;
         }
         transform.position = destination;
@@ -29,14 +30,39 @@ public abstract class Movable : MonoBehaviour
 
     protected virtual bool TryGetOverlappedWater(Vector2 pos, out Water water)
     {
-        MapManager.Instance.TryGetMapInPos(pos, out MapInfo mapInfo);
-        water = mapInfo.water;
-        return water != null;
+        if (!MapManager.Instance.TryGetMapInPos(pos, out MapInfo mapInfo) || mapInfo.MapType == MAP_TYPE.GROUND)
+        {
+            water = null;
+            return false;
+        }
+        else
+        {
+            if (mapInfo.water.isWalkable)
+            {
+                water = null;
+                return false;
+            }
+            mapInfo.water.isWalkable = true;
+            water = mapInfo.water;
+            return true;    
+        }
     }
     
     protected virtual bool TryGetOverlappedWater(Vector2 pos)
     {
-        MapManager.Instance.TryGetMapInPos(pos, out MapInfo mapInfo);
-        return mapInfo.water != null;
+        if (!MapManager.Instance.TryGetMapInPos(pos, out MapInfo mapInfo)) return false;
+        if (mapInfo.MapType == MAP_TYPE.WATER)
+        {
+            if (mapInfo.water.isWalkable)
+            {
+                return false;
+            }
+            mapInfo.water.isWalkable = true;
+            return true;    
+        }
+        else
+        {
+            return false;
+        }
     }
 }

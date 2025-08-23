@@ -71,6 +71,7 @@ public class EventManager : MonoBehaviour
         OnGoingAnimCount--;
         if (OnGoingAnimCount == 0)
         {
+            PostNotification(EVENT_TYPE.EAnimDone, this);
             GameManager.Instance.ChangeState(Game_State.READY_PHASE);
         }
     }
