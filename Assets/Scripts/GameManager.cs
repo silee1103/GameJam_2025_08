@@ -11,8 +11,6 @@ public class GameManager : MonoBehaviour
 
     void Awake()
     {
-        player = GameObject.FindWithTag("Player").GetComponent<Player>();
-        
         if(_instance == null)
         {
             _instance = this;
@@ -22,4 +20,8 @@ public class GameManager : MonoBehaviour
         DestroyImmediate(gameObject);
     }
 
+    void Start()
+    {
+        player = GameObject.FindWithTag("Player").GetComponent<Player>();
+    }
 }
