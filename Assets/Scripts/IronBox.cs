@@ -7,6 +7,7 @@ public class IronBox : Movable, IListener
     {
         EventManager.Instance.AddListener(EVENT_TYPE.EUserMove, this);
         EventManager.Instance.AddListener(EVENT_TYPE.EUserSkip, this);
+        //EventManager.Instance.AddListener(EVENT_TYPE.EObjMove, this); //혼자 움직일 일이 없음!
     }
 
     public void OnEvent(EVENT_TYPE eventType, Component sender, object param = null)
@@ -20,9 +21,6 @@ public class IronBox : Movable, IListener
                     MovingTo((Vector2)param);
                     Debug.Log(param);
                 }
-                break;
-            case EVENT_TYPE.EUserSkip:
-                //물살 이동
                 break;
         }
     }

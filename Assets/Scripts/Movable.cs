@@ -12,7 +12,7 @@ public abstract class Movable : MonoBehaviour
 
     protected virtual IEnumerator MoveCoroutine(Vector2 dir, float duration)
     {
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSecondsRealtime(0.2f);
         duration -= 0.2f;
         Vector2 destination = (Vector2)transform.position + dir;
         float time = 0f;
@@ -23,12 +23,20 @@ public abstract class Movable : MonoBehaviour
             yield return null;
         }
         transform.position = destination;
-        isInWater = TryGetOverlappedWater(destination);
+        isInWater = TryGetOverlappedWater(transform.position);
+        EventManager.Instance.SendObjAnimDone();
     }
 
-    protected virtual Water TryGetOverlappedWater(Vector2 pos)
+    protected virtual bool TryGetOverlappedWater(Vector2 pos, out Water water)
     {
         MapManager.Instance.TryGetMapInPos(pos, out MapInfo mapInfo);
-        return mapInfo.water;
+        water = mapInfo.water;
+        return water != null;
+    }
+    
+    protected virtual bool TryGetOverlappedWater(Vector2 pos)
+    {
+        MapManager.Instance.TryGetMapInPos(pos, out MapInfo mapInfo);
+        return mapInfo.water != null;
     }
 }

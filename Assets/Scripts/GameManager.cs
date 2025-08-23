@@ -9,6 +9,7 @@ public enum Game_State
     WALKING_PHASE,
     OBJECT_PHASE,
     END_PHASE,
+    PAUSE_PHASE,
 }
 
 public class GameManager : MonoBehaviour
@@ -20,6 +21,7 @@ public class GameManager : MonoBehaviour
     
     [SerializeField]
     public Game_State State {  get { return _currState; } }
+    [SerializeField]
     private Game_State _currState = Game_State.READY_PHASE;
     private Game_State _prevState = Game_State.READY_PHASE;
 
@@ -43,5 +45,10 @@ public class GameManager : MonoBehaviour
     {
         _prevState = _currState;
         _currState = newState;
+        
+        if (newState == Game_State.OBJECT_PHASE)
+        {
+            EventManager.Instance.PostNotification(EVENT_TYPE.EObjMove, this);
+        }
     }
 }
