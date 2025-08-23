@@ -1,12 +1,15 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class MapManager : MonoBehaviour
 {
+    public Dictionary<MapPos, MapInfo> FieldInfos = new Dictionary<MapPos, MapInfo>();
+    public Dictionary<MapPos, GameObject> UnderObjectsInMap = new Dictionary<MapPos, GameObject>();
+    public Dictionary<MapPos, GameObject> TopObjectsInMap = new Dictionary<MapPos, GameObject>();
+    
     public static MapManager Instance { get { return _instance; } }
     private static MapManager _instance = null;
-    
-    public Dictionary<Vector2, MapInfo> mapInfos = new Dictionary<Vector2, MapInfo>();
 
     void Awake()
     {
@@ -19,33 +22,123 @@ public class MapManager : MonoBehaviour
         DestroyImmediate(gameObject);
     }
 
-    public void AddMapInfo(GameObject obj, MAP_TYPE type, Water water = null)
+    public void AddMapInfo(MapPos pos, MapInfo mapInfo)
     {
-        mapInfos.Add((Vector2)obj.transform.position, new MapInfo(type, water));
-        //Debug.Log($"{obj.name} has been added to map list, {(Vector2)obj.transform.position}");
+        FieldInfos.Add(pos, mapInfo);
+        //Debug.Log($"{mapInfo.FieldType} has been added to map list, {pos.x}/{pos.y}");
     }
 
-    public bool TryGetMapInPos(Vector2 pos, out MapInfo mapInfo)
+    public void AddObjectInfo(MapPos pos, GameObject obj)
     {
-        mapInfo = mapInfos[pos];
-        return mapInfo != null;
+        if (FieldInfos[pos].FieldType.Equals(Field_TYPE.GROUND)) TopObjectsInMap.Add(pos, obj);
+        else UnderObjectsInMap.Add(pos, obj);
+        
+        //Debug.Log($"{obj} has been added to map list, {pos.x}/{pos.y}");
+    }
+
+    public bool OccurPush(MapPos pos, Vector2 dir)
+    {
+        int i = 0;
+        while (TopObjectsInMap.ContainsKey(pos.Add(dir*i)))
+        {
+            i++;
+        }
+        Debug.Log(i);
+        //i개의 블럭들 있음
+        if (FieldInfos.ContainsKey(pos.Add(dir * (i))))
+        {
+            for (int k = i - 1; k >= 0; k--) //o~i-1
+            {
+                DoTopPush(pos.Add(dir*k), dir);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public void DoTopPush(MapPos pos, Vector2 dir)
+    {
+        GameObject go = TopObjectsInMap[pos];
+        if (go.TryGetComponent(out WoodBox box))
+        {
+            box.pos = box.pos.Add(dir);
+            go.transform.position += (Vector3)dir;
+            if (!FieldInfos[pos.Add(dir)].FieldType.Equals(Field_TYPE.GROUND) && !UnderObjectsInMap.ContainsKey(pos.Add(dir)))
+            {
+                TopObjectsInMap.Remove(pos);
+                UnderObjectsInMap.Add(pos.Add(dir), go);
+                return;
+            }
+            TopObjectsInMap.Remove(pos);
+            TopObjectsInMap.Add(pos.Add(dir), go);
+        }
     }
 }
 
-public enum MAP_TYPE
+public enum Field_TYPE
 {
     GROUND,
     WATER,
+    MOVINGWATER,
+    
 }
 
 public class MapInfo
 {
-    public MAP_TYPE MapType;
-    public Water water;
+    public Field_TYPE FieldType;
+    public GameObject MapObject;
 
-    public MapInfo(MAP_TYPE mapType, Water water = null)
+    public MapInfo(Field_TYPE fieldType, GameObject mObject = null)
     {
-        MapType = mapType;
-        this.water = water;
+        FieldType = fieldType;
+        MapObject = mObject;
+    }
+}
+
+[Serializable]
+public class MapPos
+{
+    public int x;
+    public int y;
+
+    public MapPos(int X, int Y)
+    {
+        this.x = X;
+        this.y = Y;
+    }
+
+    public MapPos(Vector2 position)
+    {
+        this.x = Mathf.RoundToInt(position.x);
+        this.y = Mathf.RoundToInt(position.y);
+    }
+
+    public MapPos Add(MapPos pos1)
+    {
+        return new MapPos(pos1.x + x, pos1.y + y);
+    }
+    
+    public MapPos Add(Vector2 dir)
+    {
+        return new MapPos(x + Mathf.RoundToInt(dir.x), y + Mathf.RoundToInt(dir.y));
+    }
+
+    public Vector2 ToVector2()
+    {
+        return new Vector2(this.x, this.y);
+    }
+    
+    private bool Equals(MapPos pos)
+    {
+        return pos.x.Equals(x) && pos.y.Equals(y);
+    }
+    
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(x, y);
+    }
+    public override bool Equals(object obj)
+    {
+        return this.Equals(obj as MapPos);
     }
 }

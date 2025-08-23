@@ -4,11 +4,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-public class Player : MonoBehaviour, IListener
+public class Player : MonoBehaviour
 {
     private GameManager _gameManager;
     private Transform transform;
-    private bool isOnBox;
+
+    public MapPos pos;
 
     private void Awake()
     {
@@ -17,53 +18,46 @@ public class Player : MonoBehaviour, IListener
 
     private void Start()
     {
-        _gameManager = GameManager.Instance.GetComponent<GameManager>();
-    }
-    
-    private void Update()
-    {
+        pos = new MapPos(transform.position);
         
+        _gameManager = GameManager.Instance.GetComponent<GameManager>();
     }
 
     void OnMove(InputValue value)
     {
-        if (_gameManager.State != Game_State.READY_PHASE) return;
         Vector2 input = value.Get<Vector2>();
-        if (input == Vector2.zero) return;
-        if (MapManager.Instance.TryGetMapInPos((Vector2)transform.position + input, out var info) && info.MapType == MAP_TYPE.WATER && info.water.isWalkable == false) //만약 앞에 물이면 못감
+        //Debug.Log(input.ToString());
+        if (GameManager.Instance.State == Game_State.READY_PHASE && input != Vector2.zero) //앞에 물이 있으면 못감
         {
-            Debug.LogError("물에는 못 들어감!");
-            return;
+            if (MapManager.Instance.OccurPush(pos.Add(input), input))
+            {
+                Debug.Log("Pushed!");
+                //블럭 밀수 있음
+                transform.position += (Vector3)input;
+                pos = pos.Add(input);
+            }
+            else
+            {
+                Debug.Log("Not Pushed!");
+                //블럭을 밀 수 없음
+                return;
+            }
         }
-        GameManager.Instance.ChangeState(Game_State.WALKING_PHASE);
-        EventManager.Instance.PostNotification(EVENT_TYPE.EUserMove, this, input);
-        MovingAnimation(input);
     }
 
     void MovingAnimation(Vector2 dir)
     {
-        StartCoroutine(MoveCoroutine(dir, 1f));
+        
     }
 
     IEnumerator MoveCoroutine(Vector2 dir, float duration)
     {
-        Vector2 dest = (Vector2)transform.position + dir;
-        float time = 0f;
-        while (time < 1.0f)
-        {
-            time += Time.deltaTime / duration;
-            transform.position += (Vector3)dir * Time.deltaTime / duration;
-            yield return null;
-        }
-        transform.position = dest;
-        yield return new WaitForSecondsRealtime(0.3f);
-        GameManager.Instance.ChangeState(Game_State.OBJECT_PHASE);
+        yield return null;
     }
 
     void OnSkip(InputValue value)
     {
-        EventManager.Instance.PostNotification(EVENT_TYPE.EUserSkip, this);
-        GameManager.Instance.ChangeState(Game_State.OBJECT_PHASE);
+        
     }
 
     public void OnEvent(EVENT_TYPE eventType, Component sender, object param = null)

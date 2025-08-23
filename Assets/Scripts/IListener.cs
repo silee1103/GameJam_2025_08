@@ -5,7 +5,8 @@ public enum EVENT_TYPE
     EGameStart, //start the game
     EGameEnd,   //end the game
     EUserMove,   //player move
-    EUserSkip,  //player use skill
+    EUserSkip,  //player use skip
+    EObjMoveCaculate, //object caculate
     EObjMove,   //object moves
     EAnimDone,
 }
