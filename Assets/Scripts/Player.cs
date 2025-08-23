@@ -29,6 +29,10 @@ public class Player : MonoBehaviour, IListener
     {
         Vector2 input = value.Get<Vector2>();
         if (input == Vector2.zero) return;
+        if (MapManager.Instance.TryGetMapInPos((Vector2)transform.position + input, out var info)) //만약 앞에 물이면 못감
+        {
+            
+        }
         EventManager.Instance.PostNotification(EVENT_TYPE.EUserMove, this, input);
         MovingAnimation(input);
     }
