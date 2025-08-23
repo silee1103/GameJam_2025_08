@@ -90,10 +90,13 @@ public class MapManager : MonoBehaviour, IListener
                     Debug.Log($"{go.name} destroyed!");
                     Destroy(go);
                 }
-                UnderObjectsInMap.Add(pos.Add(dir), go);
-                if (go.TryGetComponent(out SpriteRenderer sr))
+                else
                 {
-                    sr.color = Color.blue;
+                    UnderObjectsInMap.Add(pos.Add(dir), go);    
+                    if (go.TryGetComponent(out SpriteRenderer sr))
+                    {
+                        sr.color = Color.blue;
+                    }
                 }
                 return;
             }
@@ -144,12 +147,12 @@ public class MapManager : MonoBehaviour, IListener
                             if (go.TryGetComponent(out Things things))
                             {
                                 things.pos = things.pos.Add(mw.movingDir);
-                                Debug.Log(things.pos.ToString());
+                                //Debug.Log(things.pos.ToString());
                             }
                             else if (go.TryGetComponent(out Player player))
                             {
                                 player.pos = player.pos.Add(mw.movingDir);
-                                Debug.Log(player.pos.ToString());
+                                //Debug.Log(player.pos.ToString());
                             }
                         }
                         

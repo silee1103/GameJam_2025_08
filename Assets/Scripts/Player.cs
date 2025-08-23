@@ -38,11 +38,12 @@ public class Player : MonoBehaviour
                 {
                     GameManager.Instance.ChangeState(Game_State.WALKING_PHASE);
                     Debug.Log("Can Go!");
-                    MapManager.Instance.TopObjectsInMap.Remove(pos);
-                    transform.position += (Vector3)input;
+                    MapManager.Instance.TopObjectsInMap.Remove(pos); 
                     pos = pos.Add(input);
                     MapManager.Instance.TopObjectsInMap.Add(pos, gameObject);
-                    GameManager.Instance.ChangeState(Game_State.OBJECT_PHASE);
+                    
+                    //transform.position += (Vector3)input;
+                    MovingAnimation(input);
                 }
                 else //끝에 벽에 막힘
                 {
@@ -61,12 +62,31 @@ public class Player : MonoBehaviour
 
     void MovingAnimation(Vector2 dir)
     {
-        
+        if (dir.y == 0) //x방향 이동
+        {
+            StartCoroutine(MoveCoroutine(dir, .8f, 0.6f));
+        }
+        else
+        {
+            StartCoroutine(MoveCoroutine(dir, .65f));
+        }
     }
 
-    IEnumerator MoveCoroutine(Vector2 dir, float duration)
+    IEnumerator MoveCoroutine(Vector2 dir, float duration, float heightOffset = 0)
     {
-        yield return null;
+        Vector3 start = transform.position;
+        Vector3 dest = transform.position + (Vector3)dir;
+        
+        float time = 0;
+        while (time < 1f)
+        {
+            time += Time.fixedDeltaTime / duration;
+            transform.position += (Vector3)dir * Time.fixedDeltaTime / duration + new Vector3(0, 0.5f - time, 0) * (Time.fixedDeltaTime * heightOffset);
+            yield return null;
+        }
+        
+        transform.position = dest;
+        GameManager.Instance.ChangeState(Game_State.OBJECT_PHASE);
     }
 
     void OnSkip(InputValue value)
