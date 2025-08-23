@@ -51,9 +51,9 @@ public class Player : MonoBehaviour
             }
             else
             {
-                Debug.Log(MapManager.Instance.FieldInfos[pos.Add(input)].FieldType.Equals(Field_TYPE.GROUND));
-                Debug.Log(!MapManager.Instance.FieldInfos[pos.Add(input)].FieldType.Equals(Field_TYPE.GROUND));
-                Debug.Log(MapManager.Instance.UnderObjectsInMap.ContainsKey(pos.Add(input)));
+                //Debug.Log(MapManager.Instance.FieldInfos[pos.Add(input)].FieldType.Equals(Field_TYPE.GROUND));
+                //Debug.Log(!MapManager.Instance.FieldInfos[pos.Add(input)].FieldType.Equals(Field_TYPE.GROUND));
+                //Debug.Log(MapManager.Instance.UnderObjectsInMap.ContainsKey(pos.Add(input)));
                 Debug.Log("Cant Go");
             }
         }
@@ -71,7 +71,11 @@ public class Player : MonoBehaviour
 
     void OnSkip(InputValue value)
     {
-        
+        if (GameManager.Instance.State == Game_State.READY_PHASE)
+        {
+            //GameManager.Instance.ChangeState(Game_State.WALKING_PHASE);
+            GameManager.Instance.ChangeState(Game_State.OBJECT_PHASE);
+        }
     }
 
     public void OnEvent(EVENT_TYPE eventType, Component sender, object param = null)
