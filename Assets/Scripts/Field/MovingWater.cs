@@ -3,7 +3,7 @@ using UnityEngine;
 public class MovingWater : Water
 {
     [SerializeField]
-    private Vector2 movingDir = Vector2.up;
+    public Vector2 movingDir = Vector2.up;
     
     void Start()
     {

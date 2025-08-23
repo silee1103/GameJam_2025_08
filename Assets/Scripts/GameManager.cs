@@ -46,5 +46,9 @@ public class GameManager : MonoBehaviour
         _prevState = _currState;
         _currState = newState;
 
+        if (newState == Game_State.OBJECT_PHASE)
+        {
+            EventManager.Instance.PostNotification(EVENT_TYPE.EObjMove, this);
+        }
     }
 }

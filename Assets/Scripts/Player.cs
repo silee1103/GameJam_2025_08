@@ -21,26 +21,40 @@ public class Player : MonoBehaviour
         pos = new MapPos(transform.position);
         
         _gameManager = GameManager.Instance.GetComponent<GameManager>();
+        MapManager.Instance.AddObjectInfo(new MapPos(transform.position), gameObject);
     }
 
     void OnMove(InputValue value)
     {
         Vector2 input = value.Get<Vector2>();
         //Debug.Log(input.ToString());
-        if (GameManager.Instance.State == Game_State.READY_PHASE && input != Vector2.zero) //앞에 물이 있으면 못감
+        if (GameManager.Instance.State == Game_State.READY_PHASE && input != Vector2.zero) 
         {
-            if (MapManager.Instance.OccurPush(pos.Add(input), input))
+            if (MapManager.Instance.FieldInfos[pos.Add(input)].FieldType.Equals(Field_TYPE.GROUND) //앞에가 땅이거나
+                || (!MapManager.Instance.FieldInfos[pos.Add(input)].FieldType.Equals(Field_TYPE.GROUND) &&
+                    MapManager.Instance.UnderObjectsInMap.ContainsKey(pos.Add(input)))) //물이지만 블럭이 있음
             {
-                Debug.Log("Pushed!");
-                //블럭 밀수 있음
-                transform.position += (Vector3)input;
-                pos = pos.Add(input);
+                if (MapManager.Instance.OccurPush(pos.Add(input), input))
+                {
+                    GameManager.Instance.ChangeState(Game_State.WALKING_PHASE);
+                    Debug.Log("Can Go!");
+                    MapManager.Instance.TopObjectsInMap.Remove(pos);
+                    transform.position += (Vector3)input;
+                    pos = pos.Add(input);
+                    MapManager.Instance.TopObjectsInMap.Add(pos, gameObject);
+                    GameManager.Instance.ChangeState(Game_State.OBJECT_PHASE);
+                }
+                else //끝에 벽에 막힘
+                {
+                    
+                }
             }
             else
             {
-                Debug.Log("Not Pushed!");
-                //블럭을 밀 수 없음
-                return;
+                Debug.Log(MapManager.Instance.FieldInfos[pos.Add(input)].FieldType.Equals(Field_TYPE.GROUND));
+                Debug.Log(!MapManager.Instance.FieldInfos[pos.Add(input)].FieldType.Equals(Field_TYPE.GROUND));
+                Debug.Log(MapManager.Instance.UnderObjectsInMap.ContainsKey(pos.Add(input)));
+                Debug.Log("Cant Go");
             }
         }
     }

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MapManager : MonoBehaviour
+public class MapManager : MonoBehaviour, IListener
 {
     public Dictionary<MapPos, MapInfo> FieldInfos = new Dictionary<MapPos, MapInfo>();
     public Dictionary<MapPos, GameObject> UnderObjectsInMap = new Dictionary<MapPos, GameObject>();
@@ -22,6 +22,11 @@ public class MapManager : MonoBehaviour
         DestroyImmediate(gameObject);
     }
 
+    void Start()
+    {
+        EventManager.Instance.AddListener(EVENT_TYPE.EObjMove, this);
+    }
+
     public void AddMapInfo(MapPos pos, MapInfo mapInfo)
     {
         FieldInfos.Add(pos, mapInfo);
@@ -36,7 +41,7 @@ public class MapManager : MonoBehaviour
         //Debug.Log($"{obj} has been added to map list, {pos.x}/{pos.y}");
     }
 
-    public bool OccurPush(MapPos pos, Vector2 dir)
+    public bool OccurPush(MapPos pos, Vector2 dir, int maxPush = 100)
     {
         int i = 0;
         while (TopObjectsInMap.ContainsKey(pos.Add(dir*i)))
@@ -44,6 +49,11 @@ public class MapManager : MonoBehaviour
             i++;
         }
         Debug.Log(i);
+        if (i >= maxPush) 
+        {
+            Debug.Log($"Cant push more than {maxPush}");
+            return false;
+        }
         //i개의 블럭들 있음
         if (FieldInfos.ContainsKey(pos.Add(dir * (i))))
         {
@@ -59,7 +69,7 @@ public class MapManager : MonoBehaviour
     public void DoTopPush(MapPos pos, Vector2 dir)
     {
         GameObject go = TopObjectsInMap[pos];
-        if (go.TryGetComponent(out WoodBox box))
+        if (go.TryGetComponent(out Things box))
         {
             box.pos = box.pos.Add(dir);
             go.transform.position += (Vector3)dir;
@@ -72,6 +82,65 @@ public class MapManager : MonoBehaviour
             TopObjectsInMap.Remove(pos);
             TopObjectsInMap.Add(pos.Add(dir), go);
         }
+    }
+
+    public void OnEvent(EVENT_TYPE eventType, Component sender, object param = null)
+    {
+        switch (eventType)
+        {
+            case EVENT_TYPE.EObjMove:
+                ApplyMovingWater();
+                break;
+        }
+    }
+
+    private void ApplyMovingWater()
+    {
+        Dictionary<MapPos, GameObject> newUnderObjectsInMap = new Dictionary<MapPos, GameObject>();
+        foreach (KeyValuePair<MapPos, GameObject> kvp in UnderObjectsInMap)
+        {
+            if (FieldInfos[kvp.Key].FieldType.Equals(Field_TYPE.MOVINGWATER)) //물 속 블럭이 해류와 겹쳐 있을 때
+            {
+                if (FieldInfos[kvp.Key].MapObject.TryGetComponent(out MovingWater mw)) //해류 저장
+                {
+                    if (FieldInfos[kvp.Key.Add(mw.movingDir)].FieldType.Equals(Field_TYPE.GROUND) || //해류타고 가는 곳이 땅이거나
+                        UnderObjectsInMap.ContainsKey(kvp.Key.Add(mw.movingDir))) //해류타고 가는 곳에 무언가 이미 있거나
+                    {
+                        newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
+                        continue;
+                    }
+                    else //해류타고 가기
+                    {
+                        newUnderObjectsInMap.Add(kvp.Key.Add(mw.movingDir), kvp.Value);
+                        kvp.Value.transform.position += (Vector3)mw.movingDir;
+                        kvp.Value.GetComponent<Things>().pos.Add(mw.movingDir);
+                        
+                        //해류타고 가는 상자 위에 물건이 있으면 함 께 감
+                        if (TopObjectsInMap.ContainsKey(kvp.Key))
+                        {
+                            GameObject go = TopObjectsInMap[kvp.Key];
+                            TopObjectsInMap.Remove(kvp.Key);
+                            TopObjectsInMap.Add(kvp.Key.Add(mw.movingDir), go);
+                            go.transform.position += (Vector3)mw.movingDir;
+                            if (go.TryGetComponent(out Things things))
+                            {
+                                things.pos.Add(mw.movingDir);
+                            }
+                            else if (go.TryGetComponent(out Player player))
+                            {
+                                player.pos.Add(mw.movingDir);
+                            }
+                        }
+                        
+                        continue;
+                    }
+                }
+                newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
+            }
+            newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
+        }
+        UnderObjectsInMap = newUnderObjectsInMap;
+        GameManager.Instance.ChangeState(Game_State.READY_PHASE);
     }
 }
 

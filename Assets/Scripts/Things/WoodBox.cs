@@ -1,9 +1,7 @@
 using UnityEngine;
 
-public class WoodBox : MonoBehaviour
+public class WoodBox : Things
 {
-    public MapPos pos;
-    
     void Start()
     {
         
