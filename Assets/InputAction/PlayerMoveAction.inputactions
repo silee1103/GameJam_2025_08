@@ -15,7 +15,7 @@
                     "initialStateCheck": true
                 },
                 {
-                    "name": "Skill",
+                    "name": "Skip",
                     "type": "Button",
                     "id": "30e54068-f143-4109-86c1-e59a178d95f4",
                     "expectedControlType": "",
@@ -87,7 +87,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
-                    "action": "Skill",
+                    "action": "Skip",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
