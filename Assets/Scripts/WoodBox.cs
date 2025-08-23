@@ -7,6 +7,7 @@ public class WoodBox : Movable, IListener
     {
         EventManager.Instance.AddListener(EVENT_TYPE.EUserMove, this);
         EventManager.Instance.AddListener(EVENT_TYPE.EUserSkip, this);
+        EventManager.Instance.AddListener(EVENT_TYPE.EObjMove, this);
         
         isInWater = TryGetOverlappedWater(transform.position);
     }
@@ -16,19 +17,14 @@ public class WoodBox : Movable, IListener
         switch (eventType)
         {
             case EVENT_TYPE.EUserMove:
-                //box 이동 생각 + 물살 이동
-                if (isInWater)
-                {
-                    //물살 이동
-                    MoveByWaterFlow();
-                }
-                else if (param != null && (Vector2)sender.transform.position + (Vector2)param == (Vector2)transform.position)
+                //box 이동
+                if (!isInWater && param != null && (Vector2)sender.transform.position + (Vector2)param == (Vector2)transform.position)
                 {
                     MovingTo((Vector2)param);
-                    Debug.Log(param);
+                    //Debug.Log(param);
                 }
                 break;
-            case EVENT_TYPE.EUserSkip:
+            case EVENT_TYPE.EObjMove: 
                 //물살 이동
                 MoveByWaterFlow();
                 break;
@@ -37,10 +33,14 @@ public class WoodBox : Movable, IListener
 
     private void MoveByWaterFlow()
     {
-        Water water = TryGetOverlappedWater(transform.position);
-        if (water.isFloating)
+        Water water = null;
+        if (TryGetOverlappedWater(transform.position, out water) && water.isFloating)
         {
-            MovingTo(water.GetComponent<WaterFlow>().FloatingDir);    
+            MovingTo(water.GetComponent<WaterFlow>().FloatingDir); 
+        }
+        else
+        {
+            EventManager.Instance.SendObjAnimDone();
         }
     }
 }

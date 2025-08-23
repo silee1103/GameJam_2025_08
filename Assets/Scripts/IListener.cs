@@ -6,7 +6,8 @@ public enum EVENT_TYPE
     EGameEnd,   //end the game
     EUserMove,   //player move
     EUserSkip,  //player use skill
-    EEventDone,  //event is done
+    EObjMove,   //object moves
+    EAnimDone,
 }
 
 public interface IListener

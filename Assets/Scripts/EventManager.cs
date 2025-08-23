@@ -10,6 +10,9 @@ public class EventManager : MonoBehaviour
     private Dictionary<EVENT_TYPE, List<IListener>> Listeners =
         new Dictionary<EVENT_TYPE, List<IListener>>();
 
+    [SerializeField]
+    private int OnGoingAnimCount = 0;
+
     void Awake()
     {
         if(_instance == null)
@@ -56,9 +59,19 @@ public class EventManager : MonoBehaviour
         if (!Listeners.TryGetValue(eventType, out ListenList))
             return;
         
+        if (eventType.Equals(EVENT_TYPE.EObjMove)) OnGoingAnimCount = ListenList.Count;
         for (int i = 0; i < ListenList.Count; i++)
         {
             ListenList?[i].OnEvent(eventType, sender, param);
+        }
+    }
+
+    public void SendObjAnimDone()
+    {
+        OnGoingAnimCount--;
+        if (OnGoingAnimCount == 0)
+        {
+            GameManager.Instance.ChangeState(Game_State.READY_PHASE);
         }
     }
 }

@@ -19,10 +19,10 @@ public class MapManager : MonoBehaviour
         DestroyImmediate(gameObject);
     }
 
-    public void AddMapInfo(GameObject gameObject, MAP_TYPE type, Water water = null)
+    public void AddMapInfo(GameObject obj, MAP_TYPE type, Water water = null)
     {
-        mapInfos.Add(gameObject.transform.position, new MapInfo(type, water));
-        Debug.Log($"{gameObject.name} has been added to map list, {type}, {water}");
+        mapInfos.Add((Vector2)obj.transform.position, new MapInfo(type, water));
+        //Debug.Log($"{obj.name} has been added to map list, {(Vector2)obj.transform.position}");
     }
 
     public bool TryGetMapInPos(Vector2 pos, out MapInfo mapInfo)
