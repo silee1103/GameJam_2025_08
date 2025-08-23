@@ -36,7 +36,14 @@ public class MapManager : MonoBehaviour, IListener
     public void AddObjectInfo(MapPos pos, GameObject obj)
     {
         if (FieldInfos[pos].FieldType.Equals(Field_TYPE.GROUND)) TopObjectsInMap.Add(pos, obj);
-        else UnderObjectsInMap.Add(pos, obj);
+        else
+        {
+            UnderObjectsInMap.Add(pos, obj);
+            if (obj.TryGetComponent(out SpriteRenderer sr))
+            {
+                sr.color = Color.blue;
+            }
+        }
         
         //Debug.Log($"{obj} has been added to map list, {pos.x}/{pos.y}");
     }
@@ -69,14 +76,25 @@ public class MapManager : MonoBehaviour, IListener
     public void DoTopPush(MapPos pos, Vector2 dir)
     {
         GameObject go = TopObjectsInMap[pos];
-        if (go.TryGetComponent(out Things box))
+        if (go.TryGetComponent(out Things thing))
         {
-            box.pos = box.pos.Add(dir);
+            thing.pos = thing.pos.Add(dir);
             go.transform.position += (Vector3)dir;
-            if (!FieldInfos[pos.Add(dir)].FieldType.Equals(Field_TYPE.GROUND) && !UnderObjectsInMap.ContainsKey(pos.Add(dir)))
+            if (!FieldInfos[pos.Add(dir)].FieldType.Equals(Field_TYPE.GROUND) && !UnderObjectsInMap.ContainsKey(pos.Add(dir))) //잠수
             {
                 TopObjectsInMap.Remove(pos);
+                if (!go.TryGetComponent(out WoodBox box))
+                {
+                    //things이면서 woodbox는 아닌 것들
+                    //전부 파괴
+                    Debug.Log($"{go.name} destroyed!");
+                    Destroy(go);
+                }
                 UnderObjectsInMap.Add(pos.Add(dir), go);
+                if (go.TryGetComponent(out SpriteRenderer sr))
+                {
+                    sr.color = Color.blue;
+                }
                 return;
             }
             TopObjectsInMap.Remove(pos);
@@ -113,7 +131,8 @@ public class MapManager : MonoBehaviour, IListener
                     {
                         newUnderObjectsInMap.Add(kvp.Key.Add(mw.movingDir), kvp.Value);
                         kvp.Value.transform.position += (Vector3)mw.movingDir;
-                        kvp.Value.GetComponent<Things>().pos.Add(mw.movingDir);
+                        kvp.Value.GetComponent<Things>().pos
+                            = kvp.Value.GetComponent<Things>().pos.Add(mw.movingDir);
                         
                         //해류타고 가는 상자 위에 물건이 있으면 함 께 감
                         if (TopObjectsInMap.ContainsKey(kvp.Key))
@@ -124,11 +143,13 @@ public class MapManager : MonoBehaviour, IListener
                             go.transform.position += (Vector3)mw.movingDir;
                             if (go.TryGetComponent(out Things things))
                             {
-                                things.pos.Add(mw.movingDir);
+                                things.pos = things.pos.Add(mw.movingDir);
+                                Debug.Log(things.pos.ToString());
                             }
                             else if (go.TryGetComponent(out Player player))
                             {
-                                player.pos.Add(mw.movingDir);
+                                player.pos = player.pos.Add(mw.movingDir);
+                                Debug.Log(player.pos.ToString());
                             }
                         }
                         
@@ -209,5 +230,10 @@ public class MapPos
     public override bool Equals(object obj)
     {
         return this.Equals(obj as MapPos);
+    }
+
+    public override string ToString()
+    {
+        return $"x:{x}, y:{y}";
     }
 }
