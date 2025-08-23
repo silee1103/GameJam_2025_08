@@ -119,4 +119,61 @@ public static class Occupancy
         cTo.Bottom = box;
         box.SetGridPos(to);
     }
+    
+    // Occupancy.cs 내부에 추가
+    public static void MoveBottomToTop(BoxBase box, Vector2Int to)
+    {
+        // 1) from 셀에서 Bottom 해제
+        var from = box.GridPos;
+        var cFrom = GetCell(from);
+        if (cFrom != null && cFrom.Bottom == box) cFrom.Bottom = null;
+        RemoveIfEmpty(from);
+
+        // 2) to 셀 Top으로 배치
+        EnsureCell(to);
+        var cTo = _cells[to];
+
+        // 안전 가드: Top이 비어 있어야 함
+        if (cTo.Top != null)
+        {
+            Debug.LogWarning($"[Occupancy] MoveBottomToTop target top occupied at {to}");
+            return;
+        }
+
+        cTo.Top = box;
+
+        // 3) 엔티티 그리드/트랜스폼 갱신
+        box.SetGridPos(to);
+    }
+    
+    // Occupancy.cs 내부에 추가
+    public static void MoveTopToBottom(BoxBase topBox, Vector2Int to)
+    {
+        if (topBox == null) return;
+
+        // 1) from 셀 Top에서 제거
+        var from = topBox.GridPos;
+        var cFrom = GetCell(from);
+        if (cFrom != null && cFrom.Top == topBox)
+        {
+            cFrom.Top = null;
+            RemoveIfEmpty(from);
+        }
+
+        // 2) to 셀 Bottom에 배치 (비어있다는 전제 하에서 호출됨)
+        EnsureCell(to);
+        var cTo = _cells[to];
+        if (cTo.Bottom != null || cTo.Top != null)
+        {
+            Debug.LogWarning($"[Occupancy] MoveTopToBottom target not empty at {to}");
+            return;
+        }
+
+        cTo.Bottom = topBox;
+
+        // 3) 엔티티 좌표/트랜스폼 갱신
+        topBox.SetGridPos(to);
+    }
+
+
 }

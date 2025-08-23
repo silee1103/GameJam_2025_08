@@ -55,9 +55,47 @@ public class Player : Entity
 
         // ==== 목적지에 무엇인가가 있음 ====
         // Top에 누가 있으면 진입 불가
+        // ==== 목적지에 무엇인가가 있음 ====
+// Top에 누가 있으면 기본은 진입 불가지만,
+// ▶ 예외: Top이 WoodBox이고, 그 칸의 Bottom이 존재(=스택)하며, 옆으로 밀 곳이 비어있으면 "Top-push" 허용.
         if (destCell.Top != null)
         {
-            // 누군가 위에 서 있으면 막힘
+            var topBox = destCell.Top as WoodBox;
+            if (topBox != null)
+            {
+                // 스택인지 확인 (보통 물/흐름 위 Bottom=WoodBox)
+                bool isStack = destCell.Bottom is WoodBox;
+
+                // 밀 방향
+                var pushTo = to + dir;
+
+                // Top-push 가능 조건:
+                //  - 스택(Top과 Bottom이 동시에 존재)
+                //  - pushTo가 박스를 놓을 수 있는 타일
+                //  - pushTo 셀은 완전히 비어 있음 (Bottom/Top 모두 null)
+                if (isStack && Occupancy.CanPlaceBox(pushTo))
+                {
+                    var nextOcc = Occupancy.GetCell(pushTo);
+                    bool nextEmpty = (nextOcc == null || (nextOcc.Bottom == null && nextOcc.Top == null));
+                    if (nextEmpty)
+                    {
+                        // ✅ Top에 있던 나무 상자를 옆 칸의 Bottom으로 내려 밀어 넣는다
+                        Occupancy.MoveTopToBottom(topBox, pushTo);
+
+                        // 그리고 플레이어는 원래 그 칸으로 진입
+                        // (물/흐름이라도 destCell.Bottom이 남아 있으므로 플레이어는 설 수 있음)
+                        if (Occupancy.CanPlayerStand(to))
+                        {
+                            Occupancy.MoveTop(this, to);
+                            _lastMoveTime = Time.time;
+                            EventManager.Publish(GameEvent.PlayerActed, null);
+                        }
+                        return;
+                    }
+                }
+            }
+
+            // Top이 있지만 Top-push 조건이 안 맞으면 막힘
             return;
         }
 
@@ -87,17 +125,38 @@ public class Player : Entity
             {
                 var pushTo = to + dir;
 
-                // 다음 칸이 박스를 놓을 수 있고, 점유도 비어 있어야 함
+                // --- A) 스택 푸시: 다음 칸이 물/흐름 & 그 칸 Bottom=WoodBox & Top 비어있으면
+                var tk2 = MapManager.Instance.GetTileKind(pushTo);
+                var nextOccForStack = Occupancy.GetCell(pushTo);
+                bool canStack =
+                    (tk2 == TileKind.Water || tk2 == TileKind.WaterFlow) &&
+                    nextOccForStack != null &&
+                    nextOccForStack.Top == null &&
+                    nextOccForStack.Bottom is WoodBox;
+
+                if (canStack)
+                {
+                    // 첫 박스(지상)를 "물 위 박스"의 Top으로 올린다
+                    Occupancy.MoveBottomToTop(box, pushTo);
+                    // 플레이어는 방금 비워진 칸(to)로 들어감
+                    Occupancy.MoveTop(this, to);
+                    _lastMoveTime = Time.time;
+                    EventManager.Publish(GameEvent.PlayerActed, null);
+                    return;
+                }
+
+                // --- B) 일반 푸시: 다음 칸이 완전히 비어 있으면
                 if (Occupancy.CanPlaceBox(pushTo))
                 {
                     var nextOcc = Occupancy.GetCell(pushTo);
-                    bool nextEmpty = (nextOcc == null || (nextOcc.Bottom == null && nextOcc.Top == null));
 
+                    // (명시 가드) 연속 박스면 금지
+                    if (nextOcc != null && nextOcc.Bottom is BoxBase) return;
+
+                    bool nextEmpty = (nextOcc == null || (nextOcc.Bottom == null && nextOcc.Top == null));
                     if (nextEmpty)
                     {
-                        // 두 개 연속 박스도 nextEmpty가 false가 되므로 자동 차단
                         Occupancy.MoveBottom(box, pushTo);
-                        // 플레이어가 방금 비워진 칸으로 진입
                         Occupancy.MoveTop(this, to);
                         _lastMoveTime = Time.time;
                         EventManager.Publish(GameEvent.PlayerActed, null);
@@ -106,8 +165,7 @@ public class Player : Entity
                 }
             }
 
-            // 여기까지 왔다는 건 밀기 실패.
-            // Ground에서는 실패 시 그냥 올라서지 않는다(막힘).
+            // 여기까지 왔으면 밀기 실패 → 지상에서는 올라서지 않고 막힘
             return;
         }
         else if (tk == TileKind.Water || tk == TileKind.WaterFlow)
