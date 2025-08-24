@@ -16,8 +16,11 @@ public enum Game_State
 
 public class GameManager : MonoBehaviour
 {
+    public Camera camera;
+    
     public List<Player> players = new List<Player>();
     private int mainPlayerIdx = 0;
+    private GameObject mainPlayer = null;
     
     public static GameManager Instance { get { return _instance; } }
     private static GameManager _instance = null;
@@ -37,6 +40,8 @@ public class GameManager : MonoBehaviour
             return;
         }
         DestroyImmediate(gameObject);
+        
+        camera = Camera.main;
     }
 
     void Update()
@@ -49,7 +54,13 @@ public class GameManager : MonoBehaviour
             mainPlayerIdx %= players.Count;
             players[mainPlayerIdx].GetComponent<Player>().isPlayable = true;
             players[mainPlayerIdx].GetComponent<PlayerInput>().enabled = true;
+            mainPlayer = players[mainPlayerIdx].gameObject;
         }
+    }
+
+    private void FixedUpdate()
+    {
+        camera.transform.position = Vector3.Lerp(camera.transform.position, mainPlayer.transform.position, 0.3f);
     }
 
     void Start()
@@ -62,6 +73,7 @@ public class GameManager : MonoBehaviour
 
         players[mainPlayerIdx].GetComponent<Player>().isPlayable = true;
         players[mainPlayerIdx].GetComponent<PlayerInput>().enabled = true;
+        mainPlayer = players[mainPlayerIdx].gameObject;
     }
 
     public void ChangeState(Game_State newState)
