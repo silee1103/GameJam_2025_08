@@ -194,6 +194,7 @@ public class MapManager : MonoBehaviour, IListener
     {
         MapPos keyPos = null;
         MapPos treasurePos = null;
+        GameObject treasureGO = null;
 
         // Top(땅 위)에서 탐색
         foreach (var kvp in TopObjectsInMap)
@@ -201,42 +202,54 @@ public class MapManager : MonoBehaviour, IListener
             var go = kvp.Value;
             if (go == null) continue;
             if (go.GetComponent<Key>())       keyPos = kvp.Key;
-            if (go.GetComponent<Treasure>())  treasurePos = kvp.Key;
+            if (go.GetComponent<Treasure>())  treasurePos = kvp.Key; treasureGO = go;
         }
-
+        
         // Under(물 위)에서도 혹시 모를 상황 대비해 탐색 (일반 규칙상 물로 가면 Things 중 Wood 이외는 파괴되지만 안전망으로 둠)
         foreach (var kvp in UnderObjectsInMap)
         {
             var go = kvp.Value;
             if (go == null) continue;
             if (go.GetComponent<Key>())       keyPos = kvp.Key;
-            if (go.GetComponent<Treasure>())  treasurePos = kvp.Key;
+            if (go.GetComponent<Treasure>())  treasurePos = kvp.Key; treasureGO = go;
         }
 
         if (keyPos != null && treasurePos != null && keyPos.Equals(treasurePos))
         {
+            
             Debug.Log("Stage Clear");
-            // 필요하면 여기서 GameManager.Instance.ChangeState(Game_State.END_PHASE); 등으로 확장 가능
         }
     }
     
     private void MergeKeyTreasureAndClear(MapPos a, MapPos b)
     {
-        // a칸(플레이어에 더 가까운 칸) → b칸(목표 칸)으로 합쳐진다고 가정
         if (!TopObjectsInMap.TryGetValue(a, out var goA)) return;
         if (!TopObjectsInMap.TryGetValue(b, out var goB)) return;
 
-        // 시각적으로 합쳐지는 느낌: A를 B위치로 이동시키고 A는 제거(혹은 반대로)
+        // 누가 Key/Treasure인지 식별
+        bool aIsKey = goA.GetComponent<Key>() != null;
+        bool bIsKey = goB.GetComponent<Key>() != null;
+        bool aIsTreasure = goA.GetComponent<Treasure>() != null;
+        bool bIsTreasure = goB.GetComponent<Treasure>() != null;
+
+        GameObject keyGO = aIsKey ? goA : (bIsKey ? goB : null);
+        GameObject treGO = aIsTreasure ? goA : (bIsTreasure ? goB : null);
+        if (keyGO == null || treGO == null) return;
+
+        // 스냅: A를 B 위치로
         if (goA.TryGetComponent(out Things tA)) tA.pos = new MapPos(b.x, b.y);
         goA.transform.position = goB.transform.position;
 
-        // 맵 딕셔너리 정리: A 제거, B는 남김(=최종 위치에 1개만 남도록)
+        // Treasure 열기
+        if (treGO.TryGetComponent(out Animator treAnim))
+            treAnim.SetBool("isOpen", true);
+
+        // 맵 딕셔너리 정리
         TopObjectsInMap.Remove(a);
+        if (keyGO == goB) TopObjectsInMap[b] = treGO; // b칸이 key였다면 treasure로 교체
 
         Debug.Log("Key + Treasure merged → Stage Clear");
-        // 필요시 이 시점에서 직접 클리어 로직 실행
-        // GameManager.Instance.ChangeState(Game_State.END_PHASE);
-        // 또는 UI/사운드/씬전환 등 원하는 처리 추가
+        // GameManager.Instance.ChangeState(Game_State.END_PHASE);  // 원하면 즉시 종료
     }
 
 
