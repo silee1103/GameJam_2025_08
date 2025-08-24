@@ -67,7 +67,6 @@ public class Player : MonoBehaviour
                     
                     //transform.position += (Vector3)input;
                     StartMoveAnim(input, isPushing);
-                    MovingAnimation(input, isPushing);
                 }
                 else //끝에 벽에 막힘
                 {
@@ -93,6 +92,8 @@ public class Player : MonoBehaviour
             // 미는 동안: 지정 스프라이트 고정(Animator 잠깐 끄기)
             if (animator) animator.enabled = false;
             if (sr) sr.sprite = GetPushSprite(lastLook);
+            
+            StartCoroutine(MoveCoroutine(dir, .8f, 0.9f));
         }
         else
         {
@@ -106,14 +107,10 @@ public class Player : MonoBehaviour
                 animator.SetFloat(pMoveY, Mathf.RoundToInt(lastLook.y));
                 PlayWalkState(lastLook, 0f); // 첫 프레임에서 시작
             }
+            StartCoroutine(MoveCoroutine(dir, .8f));
         }
     }
 
-    void MovingAnimation(Vector2 dir, bool isPushing)
-    {
-        if (dir.y == 0) StartCoroutine(MoveCoroutine(dir, .8f, 0.6f, isPushing));
-        else            StartCoroutine(MoveCoroutine(dir, .65f, 0f,   isPushing));
-    }
 
     IEnumerator MoveCoroutine(Vector2 dir, float duration, float heightOffset = 0, bool isPushing = false)
     {
@@ -145,7 +142,8 @@ public class Player : MonoBehaviour
                 SetIdleFacing(lastLook);
             }
         }
-
+        
+        yield return new WaitForSecondsRealtime(0.2f);
         GameManager.Instance.ChangeState(Game_State.OBJECT_PHASE);
     }
     

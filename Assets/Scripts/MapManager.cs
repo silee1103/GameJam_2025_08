@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -99,7 +100,10 @@ public class MapManager : MonoBehaviour, IListener
         if (go.TryGetComponent(out Things thing))
         {
             thing.pos = thing.pos.Add(dir);
-            go.transform.position += (Vector3)dir;
+            
+            //go.transform.position += (Vector3)dir;
+            MovingAnimation(go, dir, /*heightOffset*/ 0.9f, /*signalDone*/ false);
+            
             if (!FieldInfos[pos.Add(dir)].FieldType.Equals(Field_TYPE.GROUND) && !UnderObjectsInMap.ContainsKey(pos.Add(dir))) //잠수
             {
                 TopObjectsInMap.Remove(pos);
@@ -107,8 +111,11 @@ public class MapManager : MonoBehaviour, IListener
                 {
                     //things이면서 woodbox는 아닌 것들
                     //전부 파괴
-                    Debug.Log($"{go.name} destroyed!");
-                    Destroy(go);
+                    
+                    //Debug.Log($"{go.name} destroyed!");
+                    //Destroy(go);
+                    
+                    thing.Destroyed();
                 }
                 else
                 {
@@ -126,6 +133,39 @@ public class MapManager : MonoBehaviour, IListener
         }
         CheckStageClear();
     }
+    
+    // MapManager.MovingAnimation에서 이렇게 호출
+    void MovingAnimation(GameObject go, Vector2 dir, float heightOffset = 0.9f, bool signalDone = true)
+    {
+        float dur = .8f;
+        if (dir.y != 0) heightOffset = 0f;
+
+        var routine = MoveCoroutine(go, dir, dur, heightOffset, signalDone);
+        if (go.TryGetComponent(out Things t))
+            t.StartMove(routine, this);
+        else
+            StartCoroutine(routine); // fallback
+    }
+
+
+    IEnumerator MoveCoroutine(GameObject go, Vector2 dir, float duration, float heightOffset = 0, bool signalDone = true)
+    {
+        Vector3 dest = go.transform.position + (Vector3)dir;
+        
+        float time = 0;
+        while (time < 1f)
+        {
+            time += Time.fixedDeltaTime / duration;
+            go.transform.position += (Vector3)dir * Time.fixedDeltaTime / duration +
+                                     new Vector3(0, 0.5f - time, 0) * (Time.fixedDeltaTime * heightOffset);
+            yield return null;
+        }
+        
+        go.transform.position = dest;
+
+        yield return new WaitForSeconds(0.15f);
+        if (signalDone) EventManager.Instance.SendObjAnimDone();
+    }
 
     public void OnEvent(EVENT_TYPE eventType, Component sender, object param = null)
     {
@@ -139,56 +179,65 @@ public class MapManager : MonoBehaviour, IListener
 
     private void ApplyMovingWater()
     {
-        Dictionary<MapPos, GameObject> newUnderObjectsInMap = new Dictionary<MapPos, GameObject>();
-        foreach (KeyValuePair<MapPos, GameObject> kvp in UnderObjectsInMap)
+        var newUnder = new Dictionary<MapPos, GameObject>();
+        int moves = 0;
+
+        foreach (var kvp in UnderObjectsInMap)
         {
-            if (FieldInfos[kvp.Key].FieldType.Equals(Field_TYPE.MOVINGWATER)) //물 속 블럭이 해류와 겹쳐 있을 때
+            var from = kvp.Key;
+            var go   = kvp.Value;
+
+            if (FieldInfos[from].FieldType.Equals(Field_TYPE.MOVINGWATER) &&
+                FieldInfos[from].MapObject.TryGetComponent(out MovingWater mw))
             {
-                if (FieldInfos[kvp.Key].MapObject.TryGetComponent(out MovingWater mw)) //해류 저장
+                var to = from.Add(mw.movingDir);
+
+                // 못 가는 경우: 그대로 유지. (여기서 Done 쏘지 않음!)
+                if ( FieldInfos[to].FieldType.Equals(Field_TYPE.GROUND) ||
+                     UnderObjectsInMap.ContainsKey(to) )
                 {
-                    if (FieldInfos[kvp.Key.Add(mw.movingDir)].FieldType.Equals(Field_TYPE.GROUND) || //해류타고 가는 곳이 땅이거나
-                        UnderObjectsInMap.ContainsKey(kvp.Key.Add(mw.movingDir))) //해류타고 가는 곳에 무언가 이미 있거나
-                    {
-                        newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
-                        continue;
-                    }
-                    else //해류타고 가기
-                    {
-                        newUnderObjectsInMap.Add(kvp.Key.Add(mw.movingDir), kvp.Value);
-                        kvp.Value.transform.position += (Vector3)mw.movingDir;
-                        kvp.Value.GetComponent<Things>().pos
-                            = kvp.Value.GetComponent<Things>().pos.Add(mw.movingDir);
-                        
-                        //해류타고 가는 상자 위에 물건이 있으면 함 께 감
-                        if (TopObjectsInMap.ContainsKey(kvp.Key))
-                        {
-                            GameObject go = TopObjectsInMap[kvp.Key];
-                            TopObjectsInMap.Remove(kvp.Key);
-                            TopObjectsInMap.Add(kvp.Key.Add(mw.movingDir), go);
-                            go.transform.position += (Vector3)mw.movingDir;
-                            if (go.TryGetComponent(out Things things))
-                            {
-                                things.pos = things.pos.Add(mw.movingDir);
-                                //Debug.Log(things.pos.ToString());
-                            }
-                            else if (go.TryGetComponent(out Player player))
-                            {
-                                player.pos = player.pos.Add(mw.movingDir);
-                                //Debug.Log(player.pos.ToString());
-                            }
-                        }
-                        
-                        continue;
-                    }
+                    newUnder.Add(from, go);
+                    continue;
                 }
-                newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
+
+                // 가는 경우: 애니메이션 코루틴이 끝나며 Done을 "한 번" 쏨
+                newUnder.Add(to, go);
+                if (go.TryGetComponent(out Things t)) t.pos = t.pos.Add(mw.movingDir);
+                MovingAnimation(go, mw.movingDir, 0, true);
+                moves++;
+                    
+                // 위에 탑승자도 함께 이동 + 코루틴으로 이동 (Done 중복 X)
+                if (TopObjectsInMap.ContainsKey(from))
+                {
+                    var rider = TopObjectsInMap[from];
+                    TopObjectsInMap.Remove(from);
+                    TopObjectsInMap.Add(to, rider);
+                    MovingAnimation(rider, mw.movingDir, 0, true);
+                    moves++;
+                    if (rider.TryGetComponent(out Things rt)) rt.pos = rt.pos.Add(mw.movingDir);
+                    else if (rider.TryGetComponent(out Player rp)) rp.pos = rp.pos.Add(mw.movingDir);
+                }
             }
-            newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
+            else
+            {
+                newUnder.Add(from, go);
+            }
         }
-        UnderObjectsInMap = newUnderObjectsInMap;
+
+        UnderObjectsInMap = newUnder;
+        if (moves == 0)
+        {
+            // 아무도 안 움직였으면 딱 한 번만
+            EventManager.Instance.SendObjAnimDone();
+        }
+        else
+        {
+            EventManager.Instance.AddExtraAnim(moves - 1);
+        }
         CheckStageClear();
-        GameManager.Instance.ChangeState(Game_State.READY_PHASE);
     }
+
+    
     // MapManager 클래스 내부에 추가
     private void CheckStageClear()
     {
@@ -202,7 +251,7 @@ public class MapManager : MonoBehaviour, IListener
             var go = kvp.Value;
             if (go == null) continue;
             if (go.GetComponent<Key>())       keyPos = kvp.Key;
-            if (go.GetComponent<Treasure>())  treasurePos = kvp.Key; treasureGO = go;
+            if (go.GetComponent<Treasure>())  { treasurePos = kvp.Key; treasureGO = go; }
         }
         
         // Under(물 위)에서도 혹시 모를 상황 대비해 탐색 (일반 규칙상 물로 가면 Things 중 Wood 이외는 파괴되지만 안전망으로 둠)
@@ -210,9 +259,9 @@ public class MapManager : MonoBehaviour, IListener
         {
             var go = kvp.Value;
             if (go == null) continue;
-            if (go.GetComponent<Key>())       keyPos = kvp.Key;
-            if (go.GetComponent<Treasure>())  treasurePos = kvp.Key; treasureGO = go;
-        }
+            if (go.GetComponent<Key>()) keyPos = kvp.Key;
+            if (go.GetComponent<Treasure>()) { treasurePos = kvp.Key; treasureGO = go; }
+    }
 
         if (keyPos != null && treasurePos != null && keyPos.Equals(treasurePos))
         {

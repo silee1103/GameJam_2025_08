@@ -68,6 +68,7 @@ public class EventManager : MonoBehaviour
 
     public void SendObjAnimDone()
     {
+        if (!GameManager.Instance.State.Equals(Game_State.OBJECT_PHASE)) return;
         OnGoingAnimCount--;
         if (OnGoingAnimCount == 0)
         {
@@ -75,4 +76,11 @@ public class EventManager : MonoBehaviour
             GameManager.Instance.ChangeState(Game_State.READY_PHASE);
         }
     }
+    
+    // EventManager.cs
+    public void AddExtraAnim(int n)
+    {
+        OnGoingAnimCount += n;
+    }
+
 }
