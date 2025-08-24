@@ -128,7 +128,7 @@ public class MapManager : MonoBehaviour, IListener
                     {
                         sr.color = new Color(125/255f,175/255f,255/255f);
 
-                        sr.GetComponent<Renderer>().sortingOrder = -1;
+                        sr.GetComponent<Renderer>().sortingOrder = 0;
                     }
                 }
                 CheckStageClear();

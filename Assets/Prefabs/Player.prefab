@@ -79,7 +79,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 10
-  m_Sprite: {fileID: -1551179492062149615, guid: 8576618d449ffb944b3946be18790a6e, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 5aa20c5d31799af47a374755d77ca390, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -132,18 +132,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70a5c047d7b16b949abaf0fc88b20524, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  pos:
+    x: 0
+    y: 0
   animator: {fileID: 0}
   sr: {fileID: 0}
   pIsMoving: IsMoving
   pMoveX: MoveX
   pMoveY: MoveY
-  pushUp: {fileID: 0}
-  pushDown: {fileID: 0}
-  pushLeft: {fileID: 0}
-  pushRight: {fileID: 0}
-  pos:
-    x: 0
-    y: 0
+  pushUp: {fileID: 21300000, guid: 9640cc9d3919cbb498f4d45470c8db51, type: 3}
+  pushDown: {fileID: 21300000, guid: 5abb9285ce87dda478c2bf0a0cd3a3d0, type: 3}
+  pushLeft: {fileID: 21300000, guid: b32677a9bc4ba3f48a309d83955e8cee, type: 3}
+  pushRight: {fileID: 21300000, guid: 2fbb46a8f21dd3e43ab5843569c29446, type: 3}
+  isPlayable: 0
 --- !u!95 &5622404359810150742
 Animator:
   serializedVersion: 7
