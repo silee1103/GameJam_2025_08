@@ -4,12 +4,15 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-public class Player : MonoBehaviour
+public class Player : Things
 {
+    public bool isPlayable = false;
+    
+    
     private GameManager _gameManager;
     private Transform transform;
 
-    public MapPos pos;
+    //public MapPos pos;
 
     private void Awake()
     {
