@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 89a86ee4ce270164f8ebbb1bc2c6626c
+guid: 1fb6420681def25428c42ef88d45a9d5
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 1211669445968281209
-    second: penguin_f_i_0
+      213: -3546785800101154850
+    second: treasure_open_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: penguin_f_i_0
+      name: treasure_open_0
       rect:
         serializedVersion: 2
-        x: 12
+        x: 0
         y: 0
-        width: 104
-        height: 128
+        width: 128
+        height: 96
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 97e322001f6b0d010800000000000000
-      internalID: 1211669445968281209
+      spriteID: edf22924b1947cec0800000000000000
+      internalID: -3546785800101154850
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      penguin_f_i_0: 1211669445968281209
+      treasure_open_0: -3546785800101154850
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
