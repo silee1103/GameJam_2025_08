@@ -10,6 +10,10 @@ public class MapManager : MonoBehaviour, IListener
     
     public static MapManager Instance { get { return _instance; } }
     private static MapManager _instance = null;
+    
+    private bool IsKey(GameObject go)      => go && go.GetComponent<Key>();
+    private bool IsTreasure(GameObject go) => go && go.GetComponent<Treasure>();
+
 
     void Awake()
     {
@@ -50,6 +54,22 @@ public class MapManager : MonoBehaviour, IListener
 
     public bool OccurPush(MapPos pos, Vector2 dir, int maxPush = 100)
     {
+        // 0) 인접 합체 체크: pos(첫 칸)와 pos2(그 다음 칸)
+        if (TopObjectsInMap.TryGetValue(pos, out var first))
+        {
+            var pos2 = pos.Add(dir);
+            if (TopObjectsInMap.TryGetValue(pos2, out var second))
+            {
+                bool isPair = (IsKey(first) && IsTreasure(second)) || (IsTreasure(first) && IsKey(second));
+                if (isPair)
+                {
+                    // 일반 체인 푸시 금지하고 즉시 합체 처리
+                    MergeKeyTreasureAndClear(pos, pos2);
+                    return true; // 플레이어 이동은 가능
+                }
+            }
+        }
+        
         int i = 0;
         while (TopObjectsInMap.ContainsKey(pos.Add(dir*i)))
         {
@@ -98,11 +118,13 @@ public class MapManager : MonoBehaviour, IListener
                         sr.color = new Color(125/255f,175/255f,255/255f);
                     }
                 }
+                CheckStageClear();
                 return;
             }
             TopObjectsInMap.Remove(pos);
             TopObjectsInMap.Add(pos.Add(dir), go);
         }
+        CheckStageClear();
     }
 
     public void OnEvent(EVENT_TYPE eventType, Component sender, object param = null)
@@ -117,109 +139,106 @@ public class MapManager : MonoBehaviour, IListener
 
     private void ApplyMovingWater()
     {
-        // ADD: 이번 턴에 이미 이동한 Under 박스 추적(턴당 1칸 보장)
-        var movedUnder = new HashSet<GameObject>(); // ADD
-
-        // 한 턴에 최대 Under 개수만큼 스윕(안전 캡)
-        int maxSweeps = Mathf.Max(1, UnderObjectsInMap.Count);
-
-        for (int sweep = 0; sweep < maxSweeps; sweep++)
+        Dictionary<MapPos, GameObject> newUnderObjectsInMap = new Dictionary<MapPos, GameObject>();
+        foreach (KeyValuePair<MapPos, GameObject> kvp in UnderObjectsInMap)
         {
-            // 1) 현재 상태 기준으로 이동 후보 수집
-            var candidates = new List<(MapPos from, MapPos to, GameObject box, Vector2 dir, GameObject rider)>();
-
-            foreach (var kvp in UnderObjectsInMap)
+            if (FieldInfos[kvp.Key].FieldType.Equals(Field_TYPE.MOVINGWATER)) //물 속 블럭이 해류와 겹쳐 있을 때
             {
-                var from = kvp.Key;
-                var boxGO = kvp.Value;
-
-                // ADD: 이미 이 턴에 한 칸 이동한 박스는 스킵(연속 이동 방지)
-                if (movedUnder.Contains(boxGO)) continue; // ADD
-
-                // 해류 칸인지 확인
-                if (!FieldInfos.TryGetValue(from, out var info)) continue;
-                if (!info.FieldType.Equals(Field_TYPE.MOVINGWATER)) continue;
-                if (!info.MapObject || !info.MapObject.TryGetComponent(out MovingWater mw)) continue;
-
-                var dir = mw.movingDir;
-                var to = from.Add(dir);
-
-                // 목적지 유효성: 맵 안, 땅이 아니고, Under 미점유
-                if (!FieldInfos.TryGetValue(to, out var toInfo)) continue;
-                if (toInfo.FieldType.Equals(Field_TYPE.GROUND)) continue;
-                if (UnderObjectsInMap.ContainsKey(to)) continue;
-
-                // 위에 타고 있는 게 박스면 이동 금지(규칙)
-                GameObject rider = null;
-                if (TopObjectsInMap.TryGetValue(from, out var topGO))
+                if (FieldInfos[kvp.Key].MapObject.TryGetComponent(out MovingWater mw)) //해류 저장
                 {
-                    if (topGO.GetComponent<WoodBox>() )//|| topGO.GetComponent<IronBox>())
-                        continue; // 윗박스/아이언 올라타면 하부 이동 금지
-                    rider = topGO;  // 플레이어 등은 함께 이동
+                    if (FieldInfos[kvp.Key.Add(mw.movingDir)].FieldType.Equals(Field_TYPE.GROUND) || //해류타고 가는 곳이 땅이거나
+                        UnderObjectsInMap.ContainsKey(kvp.Key.Add(mw.movingDir))) //해류타고 가는 곳에 무언가 이미 있거나
+                    {
+                        newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
+                        continue;
+                    }
+                    else //해류타고 가기
+                    {
+                        newUnderObjectsInMap.Add(kvp.Key.Add(mw.movingDir), kvp.Value);
+                        kvp.Value.transform.position += (Vector3)mw.movingDir;
+                        kvp.Value.GetComponent<Things>().pos
+                            = kvp.Value.GetComponent<Things>().pos.Add(mw.movingDir);
+                        
+                        //해류타고 가는 상자 위에 물건이 있으면 함 께 감
+                        if (TopObjectsInMap.ContainsKey(kvp.Key))
+                        {
+                            GameObject go = TopObjectsInMap[kvp.Key];
+                            TopObjectsInMap.Remove(kvp.Key);
+                            TopObjectsInMap.Add(kvp.Key.Add(mw.movingDir), go);
+                            go.transform.position += (Vector3)mw.movingDir;
+                            if (go.TryGetComponent(out Things things))
+                            {
+                                things.pos = things.pos.Add(mw.movingDir);
+                                //Debug.Log(things.pos.ToString());
+                            }
+                            else if (go.TryGetComponent(out Player player))
+                            {
+                                player.pos = player.pos.Add(mw.movingDir);
+                                //Debug.Log(player.pos.ToString());
+                            }
+                        }
+                        
+                        continue;
+                    }
                 }
-
-                // (선택 가드) 목적지 Top에 누가 서있으면 충돌로 간주해서 이동 금지
-                if (TopObjectsInMap.ContainsKey(to)) continue;
-
-                candidates.Add((from, to, boxGO, dir, rider));
+                newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
             }
-
-            if (candidates.Count == 0)
-                break; // 이번 스윕에 움직일 게 없음 → 종료
-
-            // 2) 동일 목적지 충돌 제거
-            var toCount = new Dictionary<MapPos, int>();
-            foreach (var c in candidates)
-                toCount[c.to] = (toCount.TryGetValue(c.to, out var n) ? n : 0) + 1;
-
-            // 3) 동시 적용
-            int applied = 0;
-
-            // 먼저 from 제거(충돌 없는 후보만 대상으로)
-            foreach (var c in candidates)
-            {
-                if (toCount[c.to] != 1) continue;
-                UnderObjectsInMap.Remove(c.from);
-                if (c.rider != null) TopObjectsInMap.Remove(c.from);
-            }
-
-            // 그 다음 배치/좌표 갱신
-            foreach (var c in candidates)
-            {
-                if (toCount[c.to] != 1) continue;
-
-                // Under 이동
-                UnderObjectsInMap[c.to] = c.box;
-                c.box.transform.position += (Vector3)c.dir;
-                if (c.box.TryGetComponent(out Things underThings))
-                    underThings.pos = underThings.pos.Add(c.dir);
-
-                // ADD: 이 턴에 이미 이동한 것으로 마킹
-                movedUnder.Add(c.box); // ADD
-
-                // Rider(플레이어 등) 동승
-                if (c.rider != null)
-                {
-                    TopObjectsInMap[c.to] = c.rider;
-                    c.rider.transform.position += (Vector3)c.dir;
-
-                    if (c.rider.TryGetComponent(out Things t))
-                        t.pos = t.pos.Add(c.dir);
-                    else if (c.rider.TryGetComponent(out Player p))
-                        p.pos = p.pos.Add(c.dir);
-                }
-
-                applied++;
-            }
-
-            // 이번 스윕에서 실제로 적용된 게 없으면 종료
-            if (applied == 0) break;
-            // 적용된 게 있으면 다음 스윕으로 넘어가서 "기차처럼" 뒤가 한 칸 더 따라옴
-            // (앞 박스는 movedUnder 때문에 같은 턴에 2칸 이상 이동하지 않음)
+            newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
         }
-
+        UnderObjectsInMap = newUnderObjectsInMap;
+        CheckStageClear();
         GameManager.Instance.ChangeState(Game_State.READY_PHASE);
     }
+    // MapManager 클래스 내부에 추가
+    private void CheckStageClear()
+    {
+        MapPos keyPos = null;
+        MapPos treasurePos = null;
+
+        // Top(땅 위)에서 탐색
+        foreach (var kvp in TopObjectsInMap)
+        {
+            var go = kvp.Value;
+            if (go == null) continue;
+            if (go.GetComponent<Key>())       keyPos = kvp.Key;
+            if (go.GetComponent<Treasure>())  treasurePos = kvp.Key;
+        }
+
+        // Under(물 위)에서도 혹시 모를 상황 대비해 탐색 (일반 규칙상 물로 가면 Things 중 Wood 이외는 파괴되지만 안전망으로 둠)
+        foreach (var kvp in UnderObjectsInMap)
+        {
+            var go = kvp.Value;
+            if (go == null) continue;
+            if (go.GetComponent<Key>())       keyPos = kvp.Key;
+            if (go.GetComponent<Treasure>())  treasurePos = kvp.Key;
+        }
+
+        if (keyPos != null && treasurePos != null && keyPos.Equals(treasurePos))
+        {
+            Debug.Log("Stage Clear");
+            // 필요하면 여기서 GameManager.Instance.ChangeState(Game_State.END_PHASE); 등으로 확장 가능
+        }
+    }
+    
+    private void MergeKeyTreasureAndClear(MapPos a, MapPos b)
+    {
+        // a칸(플레이어에 더 가까운 칸) → b칸(목표 칸)으로 합쳐진다고 가정
+        if (!TopObjectsInMap.TryGetValue(a, out var goA)) return;
+        if (!TopObjectsInMap.TryGetValue(b, out var goB)) return;
+
+        // 시각적으로 합쳐지는 느낌: A를 B위치로 이동시키고 A는 제거(혹은 반대로)
+        if (goA.TryGetComponent(out Things tA)) tA.pos = new MapPos(b.x, b.y);
+        goA.transform.position = goB.transform.position;
+
+        // 맵 딕셔너리 정리: A 제거, B는 남김(=최종 위치에 1개만 남도록)
+        TopObjectsInMap.Remove(a);
+
+        Debug.Log("Key + Treasure merged → Stage Clear");
+        // 필요시 이 시점에서 직접 클리어 로직 실행
+        // GameManager.Instance.ChangeState(Game_State.END_PHASE);
+        // 또는 UI/사운드/씬전환 등 원하는 처리 추가
+    }
+
 
 }
 
