@@ -64,11 +64,11 @@ public class Player : MonoBehaviour
     {
         if (dir.y == 0) //x방향 이동
         {
-            StartCoroutine(MoveCoroutine(dir, .8f, 0.6f));
+            StartCoroutine(MoveCoroutine(dir, .8f, 0.9f));
         }
         else
         {
-            StartCoroutine(MoveCoroutine(dir, .65f));
+            StartCoroutine(MoveCoroutine(dir, .8f));
         }
     }
 
