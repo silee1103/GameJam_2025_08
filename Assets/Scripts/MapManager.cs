@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -79,7 +80,10 @@ public class MapManager : MonoBehaviour, IListener
         if (go.TryGetComponent(out Things thing))
         {
             thing.pos = thing.pos.Add(dir);
-            go.transform.position += (Vector3)dir;
+            
+            //go.transform.position += (Vector3)dir;
+            MovingAnimation(go, dir);
+            
             if (!FieldInfos[pos.Add(dir)].FieldType.Equals(Field_TYPE.GROUND) && !UnderObjectsInMap.ContainsKey(pos.Add(dir))) //잠수
             {
                 TopObjectsInMap.Remove(pos);
@@ -87,8 +91,11 @@ public class MapManager : MonoBehaviour, IListener
                 {
                     //things이면서 woodbox는 아닌 것들
                     //전부 파괴
-                    Debug.Log($"{go.name} destroyed!");
-                    Destroy(go);
+                    
+                    //Debug.Log($"{go.name} destroyed!");
+                    //Destroy(go);
+                    
+                    thing.Destroyed();
                 }
                 else
                 {
@@ -104,6 +111,36 @@ public class MapManager : MonoBehaviour, IListener
             TopObjectsInMap.Add(pos.Add(dir), go);
         }
     }
+    
+    void MovingAnimation(GameObject go, Vector2 dir, float heightOffset = 0.9f)
+    {
+        if (dir.y == 0) //x방향 이동
+        {
+            StartCoroutine(MoveCoroutine(go, dir, .8f, heightOffset));
+        }
+        else
+        {
+            StartCoroutine(MoveCoroutine(go, dir, .8f));
+        }
+    }
+
+    IEnumerator MoveCoroutine(GameObject go, Vector2 dir, float duration, float heightOffset = 0)
+    {
+        Vector3 dest = go.transform.position + (Vector3)dir;
+        
+        float time = 0;
+        while (time < 1f)
+        {
+            time += Time.fixedDeltaTime / duration;
+            go.transform.position += (Vector3)dir * Time.fixedDeltaTime / duration + new Vector3(0, 0.5f - time, 0) * (Time.fixedDeltaTime * heightOffset);
+            yield return null;
+        }
+        
+        go.transform.position = dest;
+
+        yield return new WaitForSeconds(0.15f);
+        EventManager.Instance.SendObjAnimDone();
+    }
 
     public void OnEvent(EVENT_TYPE eventType, Component sender, object param = null)
     {
@@ -111,6 +148,21 @@ public class MapManager : MonoBehaviour, IListener
         {
             case EVENT_TYPE.EObjMove:
                 ApplyMovingWater();
+                foreach (KeyValuePair<MapPos, GameObject> kvp in TopObjectsInMap)
+                {
+                    if (!FieldInfos[kvp.Key].FieldType.Equals(Field_TYPE.MOVINGWATER))
+                    {
+                        EventManager.Instance.SendObjAnimDone();
+                    }
+                }
+
+                foreach (KeyValuePair<MapPos, GameObject> kvp in UnderObjectsInMap)
+                {
+                    if (!FieldInfos[kvp.Key].FieldType.Equals(Field_TYPE.MOVINGWATER))
+                    {
+                        EventManager.Instance.SendObjAnimDone();
+                    }
+                }
                 break;
         }
     }
@@ -120,51 +172,54 @@ public class MapManager : MonoBehaviour, IListener
         Dictionary<MapPos, GameObject> newUnderObjectsInMap = new Dictionary<MapPos, GameObject>();
         foreach (KeyValuePair<MapPos, GameObject> kvp in UnderObjectsInMap)
         {
-            if (FieldInfos[kvp.Key].FieldType.Equals(Field_TYPE.MOVINGWATER)) //물 속 블럭이 해류와 겹쳐 있을 때
+            if (FieldInfos[kvp.Key].FieldType.Equals(Field_TYPE.MOVINGWATER) && FieldInfos[kvp.Key].MapObject.TryGetComponent(out MovingWater mw)) //물 속 블럭이 해류와 겹쳐 있을 때
             {
-                if (FieldInfos[kvp.Key].MapObject.TryGetComponent(out MovingWater mw)) //해류 저장
+                if (FieldInfos[kvp.Key.Add(mw.movingDir)].FieldType.Equals(Field_TYPE.GROUND) || //해류타고 가는 곳이 땅이거나
+                    UnderObjectsInMap.ContainsKey(kvp.Key.Add(mw.movingDir))) //해류타고 가는 곳에 무언가 이미 있거나
                 {
-                    if (FieldInfos[kvp.Key.Add(mw.movingDir)].FieldType.Equals(Field_TYPE.GROUND) || //해류타고 가는 곳이 땅이거나
-                        UnderObjectsInMap.ContainsKey(kvp.Key.Add(mw.movingDir))) //해류타고 가는 곳에 무언가 이미 있거나
+                    newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
+                    EventManager.Instance.SendObjAnimDone();
+                }
+                else //해류타고 가기
+                {
+                    newUnderObjectsInMap.Add(kvp.Key.Add(mw.movingDir), kvp.Value);
+                    kvp.Value.GetComponent<Things>().pos
+                        = kvp.Value.GetComponent<Things>().pos.Add(mw.movingDir);
+                    
+                    //kvp.Value.transform.position += (Vector3)mw.movingDir;
+                    MovingAnimation(kvp.Value, mw.movingDir, 0);
+                    
+                    //해류타고 가는 상자 위에 물건이 있으면 함 께 감
+                    if (TopObjectsInMap.ContainsKey(kvp.Key))
                     {
-                        newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
-                        continue;
-                    }
-                    else //해류타고 가기
-                    {
-                        newUnderObjectsInMap.Add(kvp.Key.Add(mw.movingDir), kvp.Value);
-                        kvp.Value.transform.position += (Vector3)mw.movingDir;
-                        kvp.Value.GetComponent<Things>().pos
-                            = kvp.Value.GetComponent<Things>().pos.Add(mw.movingDir);
+                        GameObject go = TopObjectsInMap[kvp.Key];
+                        TopObjectsInMap.Remove(kvp.Key);
+                        TopObjectsInMap.Add(kvp.Key.Add(mw.movingDir), go);
                         
-                        //해류타고 가는 상자 위에 물건이 있으면 함 께 감
-                        if (TopObjectsInMap.ContainsKey(kvp.Key))
+                        //go.transform.position += (Vector3)mw.movingDir;
+                        MovingAnimation(go, mw.movingDir, 0);
+                        
+                        if (go.TryGetComponent(out Things things))
                         {
-                            GameObject go = TopObjectsInMap[kvp.Key];
-                            TopObjectsInMap.Remove(kvp.Key);
-                            TopObjectsInMap.Add(kvp.Key.Add(mw.movingDir), go);
-                            go.transform.position += (Vector3)mw.movingDir;
-                            if (go.TryGetComponent(out Things things))
-                            {
-                                things.pos = things.pos.Add(mw.movingDir);
-                                //Debug.Log(things.pos.ToString());
-                            }
-                            else if (go.TryGetComponent(out Player player))
-                            {
-                                player.pos = player.pos.Add(mw.movingDir);
-                                //Debug.Log(player.pos.ToString());
-                            }
+                            things.pos = things.pos.Add(mw.movingDir);
+                            //Debug.Log(things.pos.ToString());
                         }
-                        
-                        continue;
+                        else if (go.TryGetComponent(out Player player))
+                        {
+                            player.pos = player.pos.Add(mw.movingDir);
+                            //Debug.Log(player.pos.ToString());
+                        }
                     }
                 }
-                newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
             }
-            newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
+            else
+            {
+                newUnderObjectsInMap.Add(kvp.Key, kvp.Value);
+                EventManager.Instance.SendObjAnimDone();   
+            }
         }
         UnderObjectsInMap = newUnderObjectsInMap;
-        GameManager.Instance.ChangeState(Game_State.READY_PHASE);
+        //GameManager.Instance.ChangeState(Game_State.READY_PHASE);
     }
 }
 

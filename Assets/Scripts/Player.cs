@@ -74,7 +74,6 @@ public class Player : MonoBehaviour
 
     IEnumerator MoveCoroutine(Vector2 dir, float duration, float heightOffset = 0)
     {
-        Vector3 start = transform.position;
         Vector3 dest = transform.position + (Vector3)dir;
         
         float time = 0;
@@ -84,8 +83,9 @@ public class Player : MonoBehaviour
             transform.position += (Vector3)dir * Time.fixedDeltaTime / duration + new Vector3(0, 0.5f - time, 0) * (Time.fixedDeltaTime * heightOffset);
             yield return null;
         }
-        
         transform.position = dest;
+
+        yield return new WaitForSecondsRealtime(0.2f);
         GameManager.Instance.ChangeState(Game_State.OBJECT_PHASE);
     }
 
