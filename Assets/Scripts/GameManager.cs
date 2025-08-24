@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.XR;
+using UnityEngine.InputSystem;
 
 [Serializable]
 public enum Game_State
@@ -14,7 +16,8 @@ public enum Game_State
 
 public class GameManager : MonoBehaviour
 {
-    public Player player = null;
+    public List<Player> players = new List<Player>();
+    private int mainPlayerIdx = 0;
     
     public static GameManager Instance { get { return _instance; } }
     private static GameManager _instance = null;
@@ -36,9 +39,29 @@ public class GameManager : MonoBehaviour
         DestroyImmediate(gameObject);
     }
 
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Tab))
+        {
+            players[mainPlayerIdx].GetComponent<Player>().isPlayable = false;
+            players[mainPlayerIdx].GetComponent<PlayerInput>().enabled = false;
+            mainPlayerIdx++;
+            mainPlayerIdx %= players.Count;
+            players[mainPlayerIdx].GetComponent<Player>().isPlayable = true;
+            players[mainPlayerIdx].GetComponent<PlayerInput>().enabled = true;
+        }
+    }
+
     void Start()
     {
-        player = GameObject.FindWithTag("Player").GetComponent<Player>();
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+        {
+            players.Add(go.GetComponent<Player>());
+            go.GetComponent<PlayerInput>().enabled = false;
+        }
+
+        players[mainPlayerIdx].GetComponent<Player>().isPlayable = true;
+        players[mainPlayerIdx].GetComponent<PlayerInput>().enabled = true;
     }
 
     public void ChangeState(Game_State newState)

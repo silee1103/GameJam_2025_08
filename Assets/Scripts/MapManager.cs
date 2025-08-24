@@ -102,7 +102,10 @@ public class MapManager : MonoBehaviour, IListener
             thing.pos = thing.pos.Add(dir);
             
             //go.transform.position += (Vector3)dir;
-            MovingAnimation(go, dir, /*heightOffset*/ 0.9f, /*signalDone*/ false);
+
+            // MovingAnimation(go, dir, /*heightOffset*/ 0.9f, /*signalDone*/ false);
+
+            //MovingAnimation(go, dir);
             
             if (!FieldInfos[pos.Add(dir)].FieldType.Equals(Field_TYPE.GROUND) && !UnderObjectsInMap.ContainsKey(pos.Add(dir))) //잠수
             {
@@ -119,15 +122,19 @@ public class MapManager : MonoBehaviour, IListener
                 }
                 else
                 {
-                    UnderObjectsInMap.Add(pos.Add(dir), go);    
+                    MovingAnimation(go, dir);
+                    UnderObjectsInMap.Add(pos.Add(dir), go);
                     if (go.TryGetComponent(out SpriteRenderer sr))
                     {
                         sr.color = new Color(125/255f,175/255f,255/255f);
+
+                        sr.GetComponent<Renderer>().sortingOrder = -1;
                     }
                 }
                 CheckStageClear();
                 return;
             }
+            MovingAnimation(go, dir);
             TopObjectsInMap.Remove(pos);
             TopObjectsInMap.Add(pos.Add(dir), go);
         }

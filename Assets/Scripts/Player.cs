@@ -4,7 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-public class Player : MonoBehaviour
+public class Player : Things
 {
     // --- [추가] 애니메이션 관련 ---
     [Header("Anim")]
@@ -21,11 +21,14 @@ public class Player : MonoBehaviour
     [SerializeField] private Sprite pushRight;
     
     private Vector2 lastLook = Vector2.down;
+
+    public bool isPlayable = false;
+    
     
     private GameManager _gameManager;
     private Transform transform;
 
-    public MapPos pos;
+    //public MapPos pos;
 
     private void Awake()
     {
