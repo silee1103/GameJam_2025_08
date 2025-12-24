@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 9017910891636019703}
   - component: {fileID: 2541620718905504233}
   - component: {fileID: 2682066915719575583}
+  - component: {fileID: 5286701405203170025}
   m_Layer: 0
   m_Name: WaterFlow_png
   m_TagString: Untagged
@@ -110,3 +111,19 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &5286701405203170025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8629051070621271869}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 409de127fe3fbad4cb1117e43d87e335, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pos: {x: 0, y: 0}
+  isFloating: 0
+  isWalkable: 0
+  floatingDir: {x: 0, y: 1}
